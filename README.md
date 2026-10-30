@@ -168,7 +168,7 @@ make build   # builds the single-file plugin into dist/
 
 The plugin source is `src/dev-servers.sh` and the settings window is in `src/settings/`. `make build` embeds the settings files in the plugin so it ships as a single file.
 
-To release, set `VERSION`, move the `Unreleased` notes in `CHANGELOG.md` under a `## X.Y.Z` heading, commit, then tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`. The release workflow lints, tests and builds, then publishes `dev-servers.sh`, `install.sh` and `SHA256SUMS` with build provenance. It then updates the cask in [MohitSharma0101/homebrew-tap](https://github.com/MohitSharma0101/homebrew-tap), using a `HOMEBREW_TAP_TOKEN` repo secret: a fine-grained token with write access to that repo's contents. Without the secret, that step is skipped. `scripts/cask.sh` generates the cask.
+To release, set `VERSION`, move the `Unreleased` notes in `CHANGELOG.md` under a `## X.Y.Z` heading, commit, then tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`. The release workflow lints, tests and builds, then publishes `dev-servers.sh`, `install.sh` and `SHA256SUMS` with build provenance. It then updates the cask in [MohitSharma0101/homebrew-tap](https://github.com/MohitSharma0101/homebrew-tap), using a `HOMEBREW_TAP_TOKEN` repo secret: a fine-grained token with write access to that repo's contents. The release stops at the first step if that secret is missing, so a release never goes out without its cask. `scripts/cask.sh` generates the cask.
 
 The smoke test uses its own temporary config, cache and project folder, and ports 48201 to 48290, so it leaves your real setup alone.
 

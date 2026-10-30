@@ -18,6 +18,16 @@ jobs:
       - name: Check the tag matches VERSION
         run: test "v$(tr -d '[:space:]' < VERSION)" = "$GITHUB_REF_NAME"
 
+      - name: Check the Homebrew tap token exists
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          [ -n "$TAP_TOKEN" ] || {
+            echo "HOMEBREW_TAP_TOKEN is not set, so the cask would never be published." >&2
+            echo "Add it as a repository secret, then tag again." >&2
+            exit 1
+          }
+
       - name: Install lint tools
         run: brew install shellcheck ruff
 
@@ -52,10 +62,8 @@ jobs:
       TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
     steps:
       - uses: actions/checkout@v7
-        if: env.TAP_TOKEN != ''
 
       - name: Update the cask in MohitSharma0101/homebrew-tap
-        if: env.TAP_TOKEN != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

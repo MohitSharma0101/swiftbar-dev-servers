@@ -150,8 +150,9 @@ not tabs: bash `read` merges empty tab-separated fields, which once made pending
     Command Line Tools are updated.
 - **Release workflow:** push tag `vX.Y.Z` matching `VERSION`. The `release` job (macos-latest) runs the
   checks and publishes `dev-servers.sh`, `install.sh` and `SHA256SUMS`, with notes taken from the
-  `## X.Y.Z` section of `CHANGELOG.md`. The `homebrew` job (ubuntu-latest) runs only if the
-  `HOMEBREW_TAP_TOKEN` secret exists, and commits `Casks/dev-servers.rb` to `MohitSharma0101/homebrew-tap`.
+  `## X.Y.Z` section of `CHANGELOG.md`. The `release` job stops at its second step if the
+  `HOMEBREW_TAP_TOKEN` secret is missing, so nothing is published without a cask. The `homebrew` job
+  (ubuntu-latest) commits `Casks/dev-servers.rb` to `MohitSharma0101/homebrew-tap`.
   Users can check provenance with `gh attestation verify <file> --repo MohitSharma0101/swiftbar-dev-servers`.
 
 ## Where things stand
