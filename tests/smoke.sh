@@ -11,10 +11,12 @@ PORT_LO=48201
 PORT_HI=48203
 failures=0
 passes=0
+WAIT_TICKS=${SMOKE_WAIT_TICKS:-300}
 
 export DEV_SERVERS_CONFIG="$WORK/config.json"
 export DEV_SERVERS_CACHE="$WORK/cache"
 export DEV_SERVERS_LOGS="$WORK/logs"
+export DEV_SERVERS_SUPPORT="$WORK/support"
 export DEV_SERVERS_QUIET=1
 
 cleanup() {
@@ -51,12 +53,15 @@ debug_state() {
   printf '%s\n' "$2"
   ls -la "$WORK/cache/state" "$WORK/cache/state/managed" 2>&1
   lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null | grep 4829 || echo "no 4829x listener"
+  echo "notifications:"; cat "$WORK/cache/notifications.log" 2>&1
+  echo "settings assets:"; ls -la "$WORK/support" 2>&1
+  echo "python processes:"; pgrep -fl "server.py" 2>&1 || echo "none"
   printf -- '--- end debug ---\n\n'
 }
 
 wait_for_port() {
   local i
-  for ((i = 0; i < 100; i++)); do
+  for ((i = 0; i < WAIT_TICKS; i++)); do
     lsof -nP -iTCP:"$1" -sTCP:LISTEN > /dev/null 2>&1 && return 0
     sleep 0.2
   done
@@ -65,7 +70,7 @@ wait_for_port() {
 
 wait_for_free_port() {
   local i
-  for ((i = 0; i < 50; i++)); do
+  for ((i = 0; i < WAIT_TICKS; i++)); do
     lsof -nP -iTCP:"$1" -sTCP:LISTEN > /dev/null 2>&1 || return 0
     sleep 0.2
   done
@@ -202,9 +207,9 @@ wait "$outsider" 2>/dev/null
 echo "Settings"
 check "inspect describes a folder" grep -q '"key": "local/demo-app"' <<< "$("$PLUGIN" inspect "$PROJECT")"
 DEV_SERVERS_QUIET=1 "$PLUGIN" settings > "$WORK/settings.out" 2>&1 &
-for ((i = 0; i < 100; i++)); do
+for ((i = 0; i < WAIT_TICKS; i++)); do
   [ -s "$WORK/cache/state/settings.info" ] && break
-  sleep 0.1
+  sleep 0.2
 done
 if [ -s "$WORK/cache/state/settings.info" ]; then
   IFS=$'\t' read -r _ port token < "$WORK/cache/state/settings.info"
