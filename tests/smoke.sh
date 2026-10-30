@@ -37,6 +37,23 @@ check() {
   fi
 }
 
+# Counts a check as failed without running anything, for a step whose setup never completed.
+fail() {
+  failures=$((failures + 1))
+  printf '  \033[31m✗\033[0m %s\n' "$1"
+}
+
+# Prints the menu and the state folder when SMOKE_DEBUG is set, to explain a failure on a runner we
+# cannot log into.
+debug_state() {
+  [ -n "${SMOKE_DEBUG:-}" ] || return 0
+  printf '\n--- debug: %s ---\n' "$1"
+  printf '%s\n' "$2"
+  ls -la "$WORK/cache/state" "$WORK/cache/state/managed" 2>&1
+  lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null | grep 4829 || echo "no 4829x listener"
+  printf -- '--- end debug ---\n\n'
+}
+
 wait_for_port() {
   local i
   for ((i = 0; i < 100; i++)); do
@@ -137,11 +154,12 @@ mkdir -p "$WORK/projects/my app"
 echo '{"scripts":{"dev":"python3 -m http.server 48292"}}' > "$WORK/projects/my app/package.json"
 check "quotes folders with spaces in menu actions" grep -q "param2=\"$WORK/projects/my app\" param3=\"dev\"" <<< "$("$PLUGIN" render)"
 "$PLUGIN" start-other "$WORK/projects/my app" dev
-wait_for_port 48292
+wait_for_port 48292 || echo "  (48292 never opened)"
 "$PLUGIN" render > /dev/null
 pkill -f "http.server 48292"
-wait_for_free_port 48292
+wait_for_free_port 48292 || echo "  (48292 never closed)"
 out=$("$PLUGIN" render)
+grep -q "^my app  dev  ·  failed | " <<< "$out" || debug_state "crash not detected" "$out"
 check "a crashed server stays in the menu as failed" grep -q "^my app  dev  ·  failed | " <<< "$out"
 check "the crash offers Retry for the same project" grep -q "^Retry | .*param1=start-other param2=\"$WORK/projects/my app\" param3=\"dev\"" <<< "$out"
 "$PLUGIN" dismiss "$WORK/projects/my app"
@@ -183,19 +201,27 @@ wait "$outsider" 2>/dev/null
 
 echo "Settings"
 check "inspect describes a folder" grep -q '"key": "local/demo-app"' <<< "$("$PLUGIN" inspect "$PROJECT")"
-DEV_SERVERS_QUIET=1 "$PLUGIN" settings > /dev/null 2>&1 &
+DEV_SERVERS_QUIET=1 "$PLUGIN" settings > "$WORK/settings.out" 2>&1 &
 for ((i = 0; i < 100; i++)); do
   [ -s "$WORK/cache/state/settings.info" ] && break
   sleep 0.1
 done
-IFS=$'\t' read -r _ port token < "$WORK/cache/state/settings.info"
-base="http://127.0.0.1:$port"
-check "settings API rejects requests without the token" \
-  test "$(curl -s -o /dev/null -w '%{http_code}' "$base/api/config")" = 403
-check "settings API returns the config with the token" \
-  grep -q '"demo"' <<< "$(curl -s -H "X-Token: $token" "$base/api/config")"
-check "settings API rejects an invalid config" grep -q '"errors"' <<< "$(curl -s -H "X-Token: $token" \
-  -X POST -d '{"roots":[],"repos":{"x/y":{"name":"","ports":"9-1","modes":[]}}}' "$base/api/config")"
+if [ -s "$WORK/cache/state/settings.info" ]; then
+  IFS=$'\t' read -r _ port token < "$WORK/cache/state/settings.info"
+  base="http://127.0.0.1:$port"
+  check "settings API rejects requests without the token" \
+    test "$(curl -s -o /dev/null -w '%{http_code}' "$base/api/config")" = 403
+  check "settings API returns the config with the token" \
+    grep -q '"demo"' <<< "$(curl -s -H "X-Token: $token" "$base/api/config")"
+  check "settings API rejects an invalid config" grep -q '"errors"' <<< "$(curl -s -H "X-Token: $token" \
+    -X POST -d '{"roots":[],"repos":{"x/y":{"name":"","ports":"9-1","modes":[]}}}' "$base/api/config")"
+else
+  fail "settings helper writes settings.info"
+  fail "settings API rejects requests without the token"
+  fail "settings API returns the config with the token"
+  fail "settings API rejects an invalid config"
+  debug_state "settings helper never started" "$(cat "$WORK/settings.out" 2>&1)"
+fi
 
 echo "Broken config"
 echo "{ not json" > "$DEV_SERVERS_CONFIG"

@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install lint tools
+        run: brew install shellcheck ruff
+
+      - name: Lint and test
+        env:
+          SMOKE_DEBUG: "1"
+        run: make check
