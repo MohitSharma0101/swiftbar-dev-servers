@@ -13,7 +13,7 @@ jobs:
   release:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check the tag matches VERSION
         run: test "v$(tr -d '[:space:]' < VERSION)" = "$GITHUB_REF_NAME"
@@ -31,7 +31,7 @@ jobs:
           cd dist && shasum -a 256 dev-servers.sh install.sh > SHA256SUMS
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             dist/dev-servers.sh
@@ -51,7 +51,7 @@ jobs:
     env:
       TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: env.TAP_TOKEN != ''
 
       - name: Update the cask in MohitSharma0101/homebrew-tap

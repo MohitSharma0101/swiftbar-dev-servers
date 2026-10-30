@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 - 2026-10-30
 
 - One-line install from the latest GitHub release. The installer checks the plugin against the release checksums and only installs a SwiftBar it downloaded if it's signed by SwiftBar's developer. Releases are built by GitHub Actions with build provenance.
 - Homebrew install: `brew install --cask mohitsharma0101/tap/dev-servers`, which brings SwiftBar along. Each release updates the cask.
