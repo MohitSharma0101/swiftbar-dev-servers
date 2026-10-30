@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dev Servers Settings</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #1c1c1e;
+    --card: #2c2c2e;
+    --field: #1c1c1e;
+    --text: #f5f5f7;
+    --muted: #98989d;
+    --line: #3a3a3c;
+    --soft: #3a3a3c;
+    --accent: #0a84ff;
+    --accent-text: #ffffff;
+    --danger: #ff3b30;
+    --ok: #34c759;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 20px;
+    background: color-mix(in srgb, var(--bg) 85%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 15px; font-weight: 600; margin: 0; flex: 1; }
+  #status { color: var(--muted); font-size: 12px; }
+  #status.dirty { color: #ff9f0a; }
+  #status.ok { color: var(--ok); }
+  main { max-width: 760px; margin: 0 auto; padding: 16px 20px 40px; }
+  h2 {
+    font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--muted); margin: 20px 4px 8px;
+  }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+  .row {
+    display: grid; grid-template-columns: 170px 1fr; gap: 12px; align-items: center;
+    padding: 10px 14px; border-top: 1px solid var(--soft);
+  }
+  .row:first-child { border-top: 0; }
+  .row > label { color: var(--muted); }
+  .hint { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+  .hint code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; }
+  input, select {
+    font: inherit; color: var(--text); background: var(--field);
+    border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; width: 100%;
+    outline: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+  input.mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+  .inline { display: flex; gap: 6px; align-items: center; }
+  .inline input.port { width: 84px; }
+  button {
+    font: inherit; border-radius: 6px; padding: 5px 11px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--text); white-space: nowrap;
+  }
+  button:hover { background: var(--soft); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 500; }
+  button.primary:disabled { opacity: .45; cursor: default; }
+  button.link { border: 0; background: none; color: var(--accent); padding: 4px 2px; }
+  button.icon { border: 0; background: none; color: var(--muted); padding: 2px 6px; font-size: 15px; line-height: 1; }
+  button.icon:hover { color: var(--danger); background: none; }
+  .list-item { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+  .list-item span { flex: 1; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+  details.repo { margin-bottom: 10px; overflow: hidden; }
+  details.repo > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px;
+  }
+  details.repo > summary::-webkit-details-marker { display: none; }
+  details.repo > summary::before { content: "›"; color: var(--muted); font-size: 16px; transition: transform .15s; width: 8px; }
+  details.repo[open] > summary::before { transform: rotate(90deg); }
+  details.repo[open] > summary { border-bottom: 1px solid var(--soft); }
+  summary .title { font-weight: 600; }
+  summary .key { color: var(--muted); font-size: 12px; flex: 1; }
+  details.repo.flash { animation: flash 1.6s ease-out; }
+  @keyframes flash { from { box-shadow: 0 0 0 3px var(--accent); } to { box-shadow: 0 0 0 0 transparent; } }
+  .modes { padding: 4px 14px 12px; }
+  .mode { border: 1px solid var(--soft); border-radius: 8px; margin-top: 10px; }
+  .mode-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--soft); }
+  .mode-head input { font-weight: 600; max-width: 220px; }
+  .mode-head .spacer { flex: 1; }
+  .mode .row { grid-template-columns: 150px 1fr; padding: 7px 10px; }
+  .preview { color: var(--muted); font-size: 11.5px; margin-top: 3px; font-family: ui-monospace, "SF Mono", Menlo, monospace; word-break: break-all; }
+  .preview b { color: var(--ok); font-weight: 500; }
+  .actions { display: flex; gap: 8px; margin-top: 6px; }
+  #errors { display: none; background: color-mix(in srgb, var(--danger) 12%, var(--card)); border: 1px solid var(--danger); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
+  #errors ul { margin: 4px 0 0; padding-left: 18px; }
+  footer { color: var(--muted); font-size: 11.5px; margin-top: 18px; text-align: center; }
+  .empty { color: var(--muted); padding: 12px 14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Dev Servers</h1>
+  <span id="status"></span>
+  <button class="primary" id="save" disabled>Save</button>
+</header>
+<main>
+  <div id="errors"></div>
+
+  <h2>General</h2>
+  <div class="card">
+    <div class="row">
+      <label>Watched folders</label>
+      <div>
+        <div id="roots"></div>
+        <button class="link" id="add-root">+ Add folder…</button>
+        <div class="hint">A server shows up when it runs from inside one of these folders.</div>
+      </div>
+    </div>
+    <div class="row">
+      <label for="idle">Auto-stop idle servers</label>
+      <div>
+        <select id="idle"></select>
+        <div class="hint">Stops a server when no browser has been connected to it for this long.</div>
+      </div>
+    </div>
+    <div class="row">
+      <label for="editor">Editor</label>
+      <div>
+        <input class="mono" id="editor" placeholder="Automatic">
+        <div class="hint">Opens a server's folder from its submenu. Leave empty to use the first one found: Cursor, VS Code, Zed, Sublime Text. Or type a command, like <code>code</code>.</div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Repos</h2>
+  <div id="repos"></div>
+  <div class="actions"><button id="add-repo">+ Add repo…</button></div>
+
+  <footer>Changes reach the menu bar within 2 seconds of saving · <span id="path"></span> · <span id="version"></span></footer>
+</main>
+
+<template id="repo-tpl">
+  <details class="repo card" open>
+    <summary><span class="title"></span><span class="key"></span><button class="icon remove-repo" title="Remove repo">✕</button></summary>
+    <div class="row"><label>Name</label><input data-f="name"></div>
+    <div class="row">
+      <label>Main checkout</label>
+      <div class="inline"><input class="mono" data-f="path" placeholder="~/Projects/my-repo"><button class="browse">Browse…</button></div>
+    </div>
+    <div class="row">
+      <label>Port range</label>
+      <div>
+        <div class="inline"><input class="port" data-f="lo" inputmode="numeric" placeholder="from"> – <input class="port" data-f="hi" inputmode="numeric" placeholder="to"></div>
+        <div class="hint">Start picks the first free port here. Leave empty if the server picks its own.</div>
+      </div>
+    </div>
+    <div class="row">
+      <label>Default port</label>
+      <div>
+        <input class="port" data-f="defaultPort" inputmode="numeric" placeholder="none" style="width:84px">
+        <div class="hint">The port your main checkout usually runs on, e.g. 3000. Servers on it use each mode's “URL on default port”.</div>
+      </div>
+    </div>
+    <div class="row">
+      <label>Copy into worktrees</label>
+      <div>
+        <input class="mono" data-f="copyIfMissing" placeholder=".env.local">
+        <div class="hint">Comma-separated files copied from the main checkout before starting.</div>
+      </div>
+    </div>
+    <div class="modes"></div>
+  </details>
+</template>
+
+<template id="mode-tpl">
+  <div class="mode">
+    <div class="mode-head"><input data-m="name" placeholder="Mode name"><span class="spacer"></span><button class="icon remove-mode" title="Remove mode">✕</button></div>
+    <div class="row"><label>Start command</label><input class="mono" data-m="start" placeholder="PORT={port} npm run dev"></div>
+    <div class="row">
+      <label>URL</label>
+      <div><input class="mono" data-m="url" placeholder="http://localhost:{port}"><div class="preview" data-p="url"></div></div>
+    </div>
+    <div class="row">
+      <label>URL on default port</label>
+      <div><input class="mono" data-m="defaultPortUrl" placeholder="http://localhost:3000"><div class="preview" data-p="def"></div></div>
+    </div>
+    <div class="row">
+      <label>Detect by</label>
+      <div><input class="mono" data-m="detect" placeholder="e.g. start:qa"><div class="hint">Text in the server's command line that marks this mode. Leave empty for the fallback mode.</div></div>
+    </div>
+  </div>
+</template>
+
+<script>
+const token = new URLSearchParams(location.search).get("t");
+const addPath = new URLSearchParams(location.search).get("add");
+const IDLE_CHOICES = ["", "1", "2", "4", "8", "12", "24"];
+let cfg = null;
+let saved = "";
+
+const $ = (sel, el = document) => el.querySelector(sel);
+
+async function api(path, body) {
+  const res = await fetch(path, {
+    method: body === undefined ? "GET" : "POST",
+    headers: { "X-Token": token, "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  return { ok: res.ok, data: await res.json() };
+}
+
+function splitPorts(ports) {
+  const [lo = "", hi = ""] = (ports || "").split("-");
+  return { lo, hi: hi || "" };
+}
+
+function setDirty() {
+  const dirty = JSON.stringify(cfg) !== saved;
+  $("#save").disabled = !dirty;
+  const status = $("#status");
+  status.className = dirty ? "dirty" : "";
+  status.textContent = dirty ? "Unsaved changes" : "";
+}
+
+function renderRoots() {
+  const box = $("#roots");
+  box.replaceChildren();
+  cfg.roots.forEach((root, i) => {
+    const item = document.createElement("div");
+    item.className = "list-item";
+    const text = document.createElement("span");
+    text.textContent = root;
+    const remove = document.createElement("button");
+    remove.className = "icon";
+    remove.title = "Remove folder";
+    remove.textContent = "✕";
+    remove.onclick = () => { cfg.roots.splice(i, 1); renderRoots(); setDirty(); };
+    item.append(text, remove);
+    box.append(item);
+  });
+  if (!cfg.roots.length) box.innerHTML = '<div class="hint">No folders yet.</div>';
+}
+
+function renderIdle() {
+  const select = $("#idle");
+  const current = String(cfg.idleStopHours || "");
+  const choices = IDLE_CHOICES.includes(current) ? IDLE_CHOICES : [...IDLE_CHOICES, current];
+  select.replaceChildren(...choices.map((v) => {
+    const opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = v === "" ? "Off" : `After ${v} hour${v === "1" ? "" : "s"}`;
+    return opt;
+  }));
+  select.value = current;
+}
+
+function firstPort(repo) {
+  const { lo } = splitPorts(repo.ports);
+  return lo || "3000";
+}
+
+function updatePreviews(repo, modeEl, mode) {
+  const port = firstPort(repo);
+  const url = (mode.url || "").replaceAll("{port}", port);
+  $('[data-p="url"]', modeEl).innerHTML = url ? `:${port} → <b></b>` : "";
+  if (url) $('[data-p="url"] b', modeEl).textContent = url;
+  const def = mode.defaultPortUrl && repo.defaultPort ? mode.defaultPortUrl : "";
+  $('[data-p="def"]', modeEl).innerHTML = def ? `:${repo.defaultPort} → <b></b>` : "";
+  if (def) $('[data-p="def"] b', modeEl).textContent = def;
+}
+
+function renderModes(repo, box) {
+  box.replaceChildren();
+  repo.modes.forEach((mode, i) => {
+    const el = $("#mode-tpl").content.firstElementChild.cloneNode(true);
+    el.querySelectorAll("[data-m]").forEach((input) => {
+      const f = input.dataset.m;
+      input.value = mode[f] || "";
+      input.oninput = () => {
+        if (input.value) mode[f] = input.value; else if (f === "detect" || f === "defaultPortUrl") delete mode[f]; else mode[f] = "";
+        updatePreviews(repo, el, mode);
+        setDirty();
+      };
+    });
+    $(".remove-mode", el).onclick = () => {
+      if (!confirm(`Remove the “${mode.name || "unnamed"}” mode?`)) return;
+      repo.modes.splice(i, 1);
+      renderModes(repo, box);
+      setDirty();
+    };
+    updatePreviews(repo, el, mode);
+    box.append(el);
+  });
+  const add = document.createElement("button");
+  add.className = "link";
+  add.textContent = "+ Add mode";
+  add.onclick = () => {
+    const base = repo.modes[0] || {};
+    repo.modes.push({ name: "", start: base.start || "", url: base.url || "http://localhost:{port}" });
+    renderModes(repo, box);
+    box.querySelectorAll('[data-m="name"]')[repo.modes.length - 1].focus();
+    setDirty();
+  };
+  box.append(add);
+}
+
+function renderRepo(key, repo) {
+  const el = $("#repo-tpl").content.firstElementChild.cloneNode(true);
+  el.dataset.key = key;
+  $(".title", el).textContent = repo.name || key;
+  $(".key", el).textContent = key;
+  const ports = splitPorts(repo.ports);
+  el.querySelectorAll("[data-f]").forEach((input) => {
+    const f = input.dataset.f;
+    input.value = f === "lo" ? ports.lo : f === "hi" ? ports.hi : repo[f] || "";
+    input.oninput = () => {
+      if (f === "lo" || f === "hi") {
+        const lo = $('[data-f="lo"]', el).value.trim();
+        const hi = $('[data-f="hi"]', el).value.trim();
+        if (lo) repo.ports = hi && hi !== lo ? `${lo}-${hi}` : lo; else delete repo.ports;
+      } else if (input.value.trim()) {
+        repo[f] = input.value.trim();
+      } else {
+        delete repo[f];
+      }
+      if (f === "name") $(".title", el).textContent = repo.name || key;
+      el.querySelectorAll(".mode").forEach((modeEl, i) => updatePreviews(repo, modeEl, repo.modes[i]));
+      setDirty();
+    };
+  });
+  $(".browse", el).onclick = async () => {
+    const { data } = await api("/api/pick-folder", { prompt: `Main checkout for ${repo.name || key}` });
+    if (!data.path) return;
+    repo.path = data.path;
+    $('[data-f="path"]', el).value = data.path;
+    setDirty();
+  };
+  $(".remove-repo", el).onclick = (e) => {
+    e.preventDefault();
+    if (!confirm(`Remove all settings for ${repo.name || key}?`)) return;
+    delete cfg.repos[key];
+    renderRepos();
+    setDirty();
+  };
+  renderModes(repo, $(".modes", el));
+  return el;
+}
+
+function renderRepos() {
+  const box = $("#repos");
+  const entries = Object.entries(cfg.repos);
+  box.replaceChildren(...entries.map(([key, repo]) => renderRepo(key, repo)));
+  if (!entries.length) box.innerHTML = '<div class="card empty">No repos yet. Add one to set its start command and URL.</div>';
+}
+
+function focusRepo(key) {
+  const el = [...document.querySelectorAll("details.repo")].find((d) => d.dataset.key === key);
+  if (!el) return;
+  el.open = true;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.classList.remove("flash");
+  void el.offsetWidth;
+  el.classList.add("flash");
+}
+
+async function addRepo(path) {
+  if (!path) {
+    const { data } = await api("/api/pick-folder", { prompt: "Pick a repo, or any worktree of it" });
+    if (!data.path) return;
+    path = data.path;
+  }
+  const { data: info } = await api("/api/inspect", { path });
+  if (info.error) return showErrors([info.error]);
+  if (!cfg.repos[info.key]) {
+    cfg.repos[info.key] = {
+      name: info.name,
+      path: info.path,
+      modes: [{ name: "Default", start: info.start, url: "http://localhost:{port}" }],
+    };
+    renderRepos();
+    setDirty();
+  }
+  focusRepo(info.key);
+}
+
+function showErrors(errors) {
+  const box = $("#errors");
+  if (!errors || !errors.length) { box.style.display = "none"; return; }
+  box.innerHTML = "<strong>Couldn't save</strong><ul></ul>";
+  errors.forEach((msg) => { const li = document.createElement("li"); li.textContent = msg; $("ul", box).append(li); });
+  box.style.display = "block";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function save() {
+  if ($("#save").disabled) return;
+  const { ok, data } = await api("/api/config", cfg);
+  if (!ok) return showErrors(data.errors || [data.error || "Unknown error"]);
+  showErrors([]);
+  saved = JSON.stringify(cfg);
+  setDirty();
+  const status = $("#status");
+  status.className = "ok";
+  status.textContent = "Saved ✓";
+  setTimeout(() => { if (status.textContent === "Saved ✓") status.textContent = ""; }, 2500);
+}
+
+async function load() {
+  const { ok, data } = await api("/api/config");
+  if (!ok) { document.body.textContent = "This settings link has expired. Open Settings from the menu bar again."; return; }
+  cfg = data.config;
+  cfg.roots = cfg.roots || [];
+  cfg.repos = cfg.repos || {};
+  Object.values(cfg.repos).forEach((r) => { r.modes = r.modes || []; });
+  saved = JSON.stringify(cfg);
+  $("#path").textContent = data.path;
+  $("#version").textContent = data.version ? `v${data.version}` : "";
+  $("#editor").value = cfg.editor || "";
+  renderRoots();
+  renderIdle();
+  renderRepos();
+  setDirty();
+  if (addPath) addRepo(addPath);
+}
+
+$("#idle").onchange = (e) => { cfg.idleStopHours = e.target.value; setDirty(); };
+$("#editor").oninput = (e) => { cfg.editor = e.target.value.trim(); setDirty(); };
+$("#add-root").onclick = async () => {
+  const { data } = await api("/api/pick-folder", { prompt: "Folder to watch for dev servers" });
+  if (data.path && !cfg.roots.includes(data.path)) { cfg.roots.push(data.path); renderRoots(); setDirty(); }
+};
+$("#add-repo").onclick = () => addRepo();
+$("#save").onclick = save;
+document.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); save(); }
+});
+window.addEventListener("beforeunload", (e) => {
+  if (cfg && JSON.stringify(cfg) !== saved) { e.preventDefault(); e.returnValue = ""; }
+});
+setInterval(() => { if (!document.hidden) api("/api/ping", {}); }, 60000);
+load();
+</script>
+</body>
+</html>

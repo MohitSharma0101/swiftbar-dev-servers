@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches VERSION
+        run: test "v$(tr -d '[:space:]' < VERSION)" = "$GITHUB_REF_NAME"
+
+      - name: Install lint tools
+        run: brew install shellcheck ruff
+
+      - name: Lint and test
+        run: make check
+
+      - name: Build
+        run: |
+          make build
+          cp install.sh dist/install.sh
+          cd dist && shasum -a 256 dev-servers.sh install.sh > SHA256SUMS
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/dev-servers.sh
+            dist/install.sh
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          awk -v h="## ${GITHUB_REF_NAME#v}" 'index($0, h) == 1 { f = 1; next } /^## / && f { exit } f' CHANGELOG.md > notes.md
+          gh release create "$GITHUB_REF_NAME" dist/dev-servers.sh dist/install.sh dist/SHA256SUMS \
+            --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+
+  homebrew:
+    needs: release
+    runs-on: ubuntu-latest
+    env:
+      TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.TAP_TOKEN != ''
+
+      - name: Update the cask in MohitSharma0101/homebrew-tap
+        if: env.TAP_TOKEN != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$GITHUB_REF_NAME" --pattern dev-servers.sh --dir release
+          sha=$(sha256sum release/dev-servers.sh | cut -d' ' -f1)
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/MohitSharma0101/homebrew-tap.git" tap
+          mkdir -p tap/Casks
+          scripts/cask.sh "${GITHUB_REF_NAME#v}" "$sha" > tap/Casks/dev-servers.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/dev-servers.rb
+          git commit -m "dev-servers ${GITHUB_REF_NAME#v}"
+          git push
