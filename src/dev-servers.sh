@@ -580,6 +580,49 @@ ensure_assets() {
   echo "$dir"
 }
 
+# Prints SwiftBar's app folder, looking where Homebrew and a manual install put it before asking
+# Spotlight.
+find_swiftbar() {
+  local app
+  for app in "/Applications/SwiftBar.app" "$HOME/Applications/SwiftBar.app"; do
+    [ -d "$app" ] && { echo "$app"; return; }
+  done
+  mdfind "kMDItemCFBundleIdentifier == 'com.ameba.SwiftBar'" 2>/dev/null | head -n 1
+}
+
+# Points SwiftBar at the folder this plugin sits in and starts it, so the menu bar icon appears
+# without the user picking a folder by hand. Used after a Homebrew install, which cannot do this
+# itself.
+cmd_enable() {
+  local app dir current
+  app=$(find_swiftbar)
+  [ -n "$app" ] || {
+    echo "SwiftBar isn't installed. Install it with: brew install --cask swiftbar" >&2
+    exit 1
+  }
+  dir=${SELF%/*}
+  [ -x "$SELF" ] || chmod +x "$SELF"
+  current=$(defaults read com.ameba.SwiftBar PluginDirectory 2>/dev/null || true)
+  current=${current/#\~/$HOME}
+  if [ -z "$current" ]; then
+    defaults write com.ameba.SwiftBar PluginDirectory "$dir"
+    echo "Set SwiftBar's plugin folder to $(tilde "$dir")"
+  elif [ "$current" != "$dir" ]; then
+    echo "SwiftBar already uses $(tilde "$current"), so this copy in $(tilde "$dir") stays unused." >&2
+    echo "Either copy dev-servers.sh into that folder, or point SwiftBar at this one in its settings." >&2
+    exit 1
+  fi
+  if pgrep -x SwiftBar > /dev/null; then
+    open -g "swiftbar://refreshallplugins"
+    echo "Refreshed SwiftBar"
+  else
+    open -a "$app"
+    echo "Started SwiftBar"
+  fi
+  echo "Look for the server icon in your menu bar, then open Settings… from its menu to add your repos."
+  echo "If the icon doesn't appear, your menu bar may be full: hide a few icons or hold ⌘ and drag it into view."
+}
+
 # Opens the settings window, starting its local backend if needed. With a folder argument the page
 # adds that repo, or jumps to it if it's already set up.
 cmd_settings() {
@@ -1215,6 +1258,7 @@ main() {
     quit) cmd_quit ;;
     copy) printf '%s' "$2" | pbcopy ;;
     settings) cmd_settings "${2:-}" ;;
+    enable) cmd_enable ;;
     pick-folder) p=$(pick_folder "$2") && tilde "${p%/}" ;;
     inspect) cmd_inspect "$2" ;;
     render) render | mark_parents ;;

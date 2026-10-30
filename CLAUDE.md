@@ -82,7 +82,12 @@ not tabs: bash `read` merges empty tab-separated fields, which once made pending
   change or every 10 s while servers run. Blocks are separated by `~~~` (SwiftBar streamable format).
 - With an argument, `main` dispatches a menu action: `start`, `start-other`, `stop`, `stop-idle`,
   `restart`, `stop-all`, `off`/`on`, `dismiss`, `quit`, `copy`, `settings`, `pick-folder`,
-  `inspect`, `render` (one render to stdout, useful for debugging), `version`.
+  `inspect`, `render` (one render to stdout, useful for debugging), `version`, `enable`.
+- `enable` is the only one meant to be typed by a person. Homebrew cannot start SwiftBar or set its
+  plugin folder, because Homebrew 7 runs install steps in a sandbox with a fake HOME, so the cask's
+  caveats ask the user to run it. It points SwiftBar at the folder the plugin sits in, then starts
+  or refreshes SwiftBar. It refuses when SwiftBar already uses a different plugin folder. There is
+  no smoke test for it: it writes real SwiftBar settings and launches the app.
 - Start flow: `cmd_start` picks the first free port in the range, copies `copyIfMissing` files from the
   main checkout, launches the command with `launch` (`nohup /bin/zsh -lc`, loading nvm and `.nvmrc`
   when present, output to the log), writes `pending/`, calls `wake_menu`, and runs

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 - 2026-10-31
+
+- New `enable` command. After a Homebrew install, `~/.swiftbar/dev-servers.sh enable` points SwiftBar at the plugin folder and starts it, so the icon appears without picking a folder by hand. Homebrew itself can't do this.
+
 ## 1.0.0 - 2026-10-30
 
 - One-line install from the latest GitHub release. The installer checks the plugin against the release checksums and only installs a SwiftBar it downloaded if it's signed by SwiftBar's developer. Releases are built by GitHub Actions with build provenance.

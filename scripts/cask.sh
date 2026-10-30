@@ -42,7 +42,10 @@ cask "dev-servers" do
   ]
 
   caveats <<~EOS
-    Dev Servers is installed in ~/.swiftbar. If SwiftBar asks for a plugin folder, choose that one.
+    One more step, to point SwiftBar at Dev Servers and start it:
+
+      ~/.swiftbar/dev-servers.sh enable
+
     If you already use another plugin folder, run the installer from the README instead.
   EOS
 end

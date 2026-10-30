@@ -38,7 +38,13 @@ If you have Google Chrome, Microsoft Edge or Brave, Settings opens in its own sm
 brew install --cask mohitsharma0101/tap/dev-servers
 ```
 
-This installs SwiftBar too if you don't have it, and puts the plugin in `~/.swiftbar`. When SwiftBar first asks for a plugin folder, choose `~/.swiftbar`. Update with `brew upgrade`, remove with `brew uninstall --cask dev-servers`, and add `--zap` to also remove settings, cache and logs.
+This installs SwiftBar too if you don't have it, and puts the plugin in `~/.swiftbar`. Homebrew can't start SwiftBar for you, so finish with:
+
+```bash
+~/.swiftbar/dev-servers.sh enable
+```
+
+That points SwiftBar at the plugin folder and starts it, and the icon appears in your menu bar. Update with `brew upgrade`, remove with `brew uninstall --cask dev-servers`, and add `--zap` to also remove settings, cache and logs.
 
 - If you installed SwiftBar from its website, run `brew install --cask --adopt swiftbar` first so Homebrew takes it over.
 - If you installed Dev Servers with the install script before, add `--adopt` to the install command.
