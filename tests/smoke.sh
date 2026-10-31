@@ -94,7 +94,9 @@ check "has a Settings item" grep -q "^Settings…" <<< "$out"
 check "has a Turn off item" grep -q "^Turn off | .*param1=off" <<< "$out"
 check "has a Quit SwiftBar item" bash -c 'grep "^Quit SwiftBar |" <<< "$1" | grep -q "param1=quit" && ! grep "^Quit SwiftBar |" <<< "$1" | grep -q alternate' _ "$out"
 ln -s "$PLUGIN" "$WORK/dev-servers"
-check "running through a symlink points its actions at the plugin itself"   bash -c 'grep -qF "bash=$1" <<< "$3" && ! grep -qF "bash=$2" <<< "$3"' _ "$PLUGIN" "$WORK/dev-servers" "$("$WORK/dev-servers" render)"
+linked=$("$WORK/dev-servers" render)
+check "running through a symlink points its actions at the plugin itself" grep -qF "bash=\"$PLUGIN\"" <<< "$linked"
+check "running through a symlink keeps the link out of the menu" bash -c '! grep -qF "$1" <<< "$2"' _ "$WORK/dev-servers" "$linked"
 
 echo "Start, detect, stop"
 "$PLUGIN" start local/demo-app "$PROJECT" 0
