@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0 - 2026-10-31
+## 1.2.1 - 2026-10-31
 
 - The plugin is now also a `dev-servers` command, so the one step after a Homebrew install is `dev-servers enable` instead of the full path. The installer links the command too, when it finds a folder on your PATH it can write to.
 - The plugin follows symlinks to itself, so running it through that command still points SwiftBar and the menu at the plugin file.
