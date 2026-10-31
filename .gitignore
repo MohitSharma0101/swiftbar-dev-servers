@@ -3,3 +3,4 @@ dist/
 __pycache__/
 .ruff_cache/
 HANDOFF.md
+.claude/settings.local.json
