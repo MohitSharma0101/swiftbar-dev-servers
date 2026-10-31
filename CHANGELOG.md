@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 - 2026-10-31
 
 - Settings has a Backup section. Export downloads your settings as a JSON file, and Import reads one back, asking whether to replace everything or only add the repos from the file. An import fills in the form without saving, so you can look it over first.
 - Choosing Settings when the window is already open now brings it to the front, instead of opening a second one in a new browser instance. The first time, macOS asks whether Dev Servers may control your browser.
