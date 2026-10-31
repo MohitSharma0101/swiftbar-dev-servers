@@ -27,7 +27,7 @@ lets the user start, open, restart and stop them from the menu bar. It ships as 
 | `scripts/settings-dev.sh` | Runs the settings backend against a throwaway config and prints its URL, so the window can be opened in any browser on any machine. `make settings`. |
 | `scripts/cask.sh` | Prints the Homebrew cask for a version and SHA-256. Used by the release workflow. |
 | `install.sh` | Installer. Works from a checkout (builds from source) or piped from the release (`curl ... | bash`, downloads the plugin). Installs SwiftBar if missing. |
-| `tests/smoke.sh` | End-to-end smoke test, 46 checks, in a throwaway config/cache/project. Ports 48201 to 48290. |
+| `tests/smoke.sh` | End-to-end smoke test, 45 checks, in a throwaway config/cache/project. Ports 48201 to 48290. |
 | `.github/workflows/release.yml` | On a `v*` tag: lint, test, build, SHA256SUMS, build provenance attestation, GitHub release, then update the Homebrew tap. |
 | `docs/settings.png` | Screenshot used in the README (sample `acme/storefront` data). |
 | `dist/` | Build output, git-ignored. |
