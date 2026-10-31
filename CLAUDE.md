@@ -103,10 +103,6 @@ not tabs: bash `read` merges empty tab-separated fields, which once made pending
   else Retry, and Dismiss.
 - Stop (`kill_tree`/`stop_root`): SIGTERM to the server and its launcher processes inside that
   worktree, 5 s wait, then SIGKILL. Never touches shells or terminals.
-- Settings… raises the browser window already showing the settings page (`raise_window`, AppleScript
-   to Chrome, Edge or Brave) instead of starting another browser instance. Any failure, including a
-   denied automation prompt, falls back to the old `open -na` launch. "Set up this repo…" always
-   opens a fresh window, because it carries an `add` parameter the open window wouldn't act on.
 - The settings window gets the plugin version as a command line argument, so loading the page costs
    no subprocess. Export and import live in the page: export downloads the config as JSON, import
    reads a file back, asks whether to replace everything or only merge the repos, and fills in the
@@ -211,6 +207,9 @@ The owner asked for these to be removed completely:
 - The View log menu item. The end of the log in a failed row's submenu is the only log view.
 - Opening the URL automatically when a server comes up. The "is up" notification links to it instead.
 - ⌥ (Option) alternate menu items and any hidden "hold Option" behaviour.
+- Raising the settings window that is already open. It needed AppleScript to the browser, which made
+  macOS ask for permission to control Chrome. The owner would rather have a second window than that
+  prompt. Choosing Settings again opens a new window, which is fine.
 
 ## Owner's rules
 

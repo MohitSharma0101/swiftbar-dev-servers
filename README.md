@@ -145,8 +145,7 @@ Stop sends SIGTERM to the server and to the `npm`, `pnpm`, `yarn`, `bun` or `nod
 
 For idle auto-stop, a server counts as in use while a browser holds a connection to it. An open tab keeps its live-reload connection, so a tab you left open counts.
 
-The settings window is a small Python server bound to `127.0.0.1` on a random port. Every request needs a token that changes each session, so other websites can't read or change your settings. It quits by itself 15 minutes after you close the window. Choosing Settings again brings the window
-you already have to the front rather than opening a second one.
+The settings window is a small Python server bound to `127.0.0.1` on a random port. Every request needs a token that changes each session, so other websites can't read or change your settings. It quits by itself 15 minutes after you close the window.
 
 Logs for servers started from the menu are in `~/Library/Logs/dev-servers/`.
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1 - 2026-10-31
+
+- Choosing Settings when the window is already open goes back to opening a new window. Bringing the open one to the front needed permission to control your browser, and macOS asked for it with a pop-up. Not worth it.
+
 ## 1.1.0 - 2026-10-31
 
 - Settings has a Backup section. Export downloads your settings as a JSON file, and Import reads one back, asking whether to replace everything or only add the repos from the file. An import fills in the form without saving, so you can look it over first.

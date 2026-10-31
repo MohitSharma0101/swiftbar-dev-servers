@@ -652,49 +652,17 @@ cmd_settings() {
     [ "$i" = "$assets" ] || rm -rf "$i"
   done
   url="http://127.0.0.1:$port/?t=$token"
-  if [ -n "$1" ]; then
-    open_app_window "$url&add=$(jq -rn --arg v "$(tilde "$1")" '$v | @uri')"
-  else
-    open_app_window "$url" "http://127.0.0.1:$port/"
-  fi
-}
-
-# Brings a window of browser $1 whose page starts with $2 to the front, and fails when there is no
-# such window or the browser won't answer. Asking an already running browser is much quicker than
-# starting another copy of it, which is what opening an app window otherwise costs.
-raise_window() {
-  local answer
-  answer=$(osascript - "$1" "$2" 2>/dev/null <<'APPLESCRIPT'
-on run argv
-  set appName to item 1 of argv
-  set target to item 2 of argv
-  if not (application appName is running) then return "no"
-  tell application appName
-    repeat with w in windows
-      repeat with t in tabs of w
-        if URL of t starts with target then
-          set index of w to 1
-          activate
-          return "yes"
-        end if
-      end repeat
-    end repeat
-  end tell
-  return "no"
-end run
-APPLESCRIPT
-  ) || return 1
-  [ "$answer" = yes ]
+  [ -n "$1" ] && url="$url&add=$(jq -rn --arg v "$(tilde "$1")" '$v | @uri')"
+  open_app_window "$url"
 }
 
 # Opens a URL as a standalone app window in a Chromium browser if one is installed, else in the
-# default browser. With a page prefix in $2, a window already showing that page is raised instead.
+# default browser.
 open_app_window() {
-  local app match="${2:-}"
+  local app
   [ -n "${DEV_SERVERS_QUIET:-}" ] && return 0
   for app in "Google Chrome" "Microsoft Edge" "Brave Browser"; do
     if [ -d "/Applications/$app.app" ] || [ -d "$HOME/Applications/$app.app" ]; then
-      if [ -n "$match" ] && raise_window "$app" "$match"; then return; fi
       open -na "$app" --args --app="$1" --window-size=820,860
       return
     fi
