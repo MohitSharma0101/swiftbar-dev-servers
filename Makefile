@@ -1,6 +1,6 @@
-.PHONY: build lint test check install uninstall clean
+.PHONY: build lint test check settings install uninstall clean
 
-SHELL_FILES := src/dev-servers.sh scripts/build.sh scripts/cask.sh install.sh tests/smoke.sh
+SHELL_FILES := src/dev-servers.sh scripts/build.sh scripts/cask.sh scripts/settings-dev.sh install.sh tests/smoke.sh
 
 build:
 	./scripts/build.sh
@@ -14,6 +14,9 @@ test:
 	./tests/smoke.sh
 
 check: lint test
+
+settings:
+	./scripts/settings-dev.sh
 
 install:
 	./install.sh

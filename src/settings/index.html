@@ -99,6 +99,13 @@
   #errors { display: none; background: color-mix(in srgb, var(--danger) 12%, var(--card)); border: 1px solid var(--danger); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
   #errors ul { margin: 4px 0 0; padding-left: 18px; }
   footer { color: var(--muted); font-size: 11.5px; margin-top: 18px; text-align: center; }
+  dialog {
+    background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 18px; max-width: 400px; font: inherit;
+  }
+  dialog::backdrop { background: rgba(0, 0, 0, .5); }
+  dialog h3 { margin: 0 0 6px; font-size: 13px; }
+  dialog .actions { justify-content: flex-end; margin-top: 14px; }
   .empty { color: var(--muted); padding: 12px 14px; }
 </style>
 </head>
@@ -141,8 +148,33 @@
   <div id="repos"></div>
   <div class="actions"><button id="add-repo">+ Add repo…</button></div>
 
+  <h2>Backup</h2>
+  <div class="card">
+    <div class="row">
+      <label>Settings file</label>
+      <div>
+        <div class="inline">
+          <button id="export">Export…</button>
+          <button id="import">Import…</button>
+          <input type="file" id="import-file" accept=".json,application/json" hidden>
+        </div>
+        <div class="hint">Export downloads a copy of these settings. Import reads one back, then you press Save to keep it.</div>
+      </div>
+    </div>
+  </div>
+
   <footer>Changes reach the menu bar within 2 seconds of saving · <span id="path"></span> · <span id="version"></span></footer>
 </main>
+
+<dialog id="import-dialog">
+  <h3>Import settings</h3>
+  <div class="hint" id="import-summary"></div>
+  <div class="actions">
+    <button value="cancel">Cancel</button>
+    <button value="merge">Merge repos</button>
+    <button class="primary" value="replace">Replace all</button>
+  </div>
+</dialog>
 
 <template id="repo-tpl">
   <details class="repo card" open>
@@ -204,6 +236,7 @@ let cfg = null;
 let saved = "";
 
 const $ = (sel, el = document) => el.querySelector(sel);
+const count = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 async function api(path, body) {
   const res = await fetch(path, {
@@ -388,13 +421,104 @@ async function addRepo(path) {
   focusRepo(info.key);
 }
 
-function showErrors(errors) {
+function showErrors(errors, title = "Couldn't save") {
   const box = $("#errors");
   if (!errors || !errors.length) { box.style.display = "none"; return; }
-  box.innerHTML = "<strong>Couldn't save</strong><ul></ul>";
-  errors.forEach((msg) => { const li = document.createElement("li"); li.textContent = msg; $("ul", box).append(li); });
+  const head = document.createElement("strong");
+  head.textContent = title;
+  const list = document.createElement("ul");
+  errors.forEach((msg) => { const li = document.createElement("li"); li.textContent = msg; list.append(li); });
+  box.replaceChildren(head, list);
   box.style.display = "block";
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function flash(text) {
+  const status = $("#status");
+  status.className = "ok";
+  status.textContent = text;
+  setTimeout(() => { if (status.textContent === text) setDirty(); }, 3000);
+}
+
+function exportConfig() {
+  const name = `dev-servers-settings-${new Date().toISOString().slice(0, 10)}.json`;
+  const url = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2) + "\n"], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  flash("Exported ✓");
+}
+
+function readFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+}
+
+function fileProblems(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return ["That file isn't a Dev Servers settings file."];
+  const problems = [];
+  if (!Array.isArray(data.roots) || data.roots.some((r) => typeof r !== "string" || !r)) {
+    problems.push("Its watched folders aren't a list of folders.");
+  }
+  if (!data.repos || typeof data.repos !== "object" || Array.isArray(data.repos)) {
+    problems.push("It has no repos section.");
+  }
+  return problems;
+}
+
+function askImport(dialog) {
+  return new Promise((done) => {
+    let answered = false;
+    const finish = (choice) => {
+      if (answered) return;
+      answered = true;
+      dialog.close();
+      done(choice);
+    };
+    dialog.querySelectorAll("button").forEach((button) => { button.onclick = () => finish(button.value); });
+    dialog.oncancel = () => finish("cancel");
+    dialog.onclose = () => finish("cancel");
+    dialog.showModal();
+  });
+}
+
+async function importConfig(file) {
+  let data;
+  try {
+    data = JSON.parse(await readFile(file));
+  } catch {
+    return showErrors(["That file isn't valid JSON."], "Couldn't import that file");
+  }
+  const problems = fileProblems(data);
+  if (problems.length) return showErrors(problems, "Couldn't import that file");
+  $("#import-summary").textContent =
+    `${file.name} has ${count(Object.keys(data.repos).length, "repo")} and ${count(data.roots.length, "watched folder")}.` +
+    " Replace everything you have now, or add only its repos to your settings?";
+  const choice = await askImport($("#import-dialog"));
+  if (choice === "replace") {
+    cfg = {
+      version: data.version || cfg.version || 1,
+      roots: data.roots,
+      idleStopHours: data.idleStopHours || "",
+      editor: data.editor || "",
+      repos: data.repos,
+    };
+  } else if (choice === "merge") {
+    cfg.repos = { ...cfg.repos, ...data.repos };
+  } else {
+    return;
+  }
+  normalize();
+  applyConfig();
+  showErrors([]);
+  setDirty();
+  flash("Imported, now press Save");
 }
 
 async function save() {
@@ -410,20 +534,28 @@ async function save() {
   setTimeout(() => { if (status.textContent === "Saved ✓") status.textContent = ""; }, 2500);
 }
 
-async function load() {
-  const { ok, data } = await api("/api/config");
-  if (!ok) { document.body.textContent = "This settings link has expired. Open Settings from the menu bar again."; return; }
-  cfg = data.config;
+function normalize() {
   cfg.roots = cfg.roots || [];
   cfg.repos = cfg.repos || {};
   Object.values(cfg.repos).forEach((r) => { r.modes = r.modes || []; });
-  saved = JSON.stringify(cfg);
-  $("#path").textContent = data.path;
-  $("#version").textContent = data.version ? `v${data.version}` : "";
+}
+
+function applyConfig() {
   $("#editor").value = cfg.editor || "";
   renderRoots();
   renderIdle();
   renderRepos();
+}
+
+async function load() {
+  const { ok, data } = await api("/api/config");
+  if (!ok) { document.body.textContent = "This settings link has expired. Open Settings from the menu bar again."; return; }
+  cfg = data.config;
+  normalize();
+  saved = JSON.stringify(cfg);
+  $("#path").textContent = data.path;
+  $("#version").textContent = data.version ? `v${data.version}` : "";
+  applyConfig();
   setDirty();
   if (addPath) addRepo(addPath);
 }
@@ -435,6 +567,13 @@ $("#add-root").onclick = async () => {
   if (data.path && !cfg.roots.includes(data.path)) { cfg.roots.push(data.path); renderRoots(); setDirty(); }
 };
 $("#add-repo").onclick = () => addRepo();
+$("#export").onclick = exportConfig;
+$("#import").onclick = () => $("#import-file").click();
+$("#import-file").onchange = (e) => {
+  const [file] = e.target.files;
+  e.target.value = "";
+  if (file) importConfig(file);
+};
 $("#save").onclick = save;
 document.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); save(); }

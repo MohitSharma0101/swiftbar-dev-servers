@@ -626,43 +626,75 @@ cmd_enable() {
 # Opens the settings window, starting its local backend if needed. With a folder argument the page
 # adds that repo, or jumps to it if it's already set up.
 cmd_settings() {
-  local info="$STATE_DIR/settings.info" pid="" port="" token="" url assets i
+  local info="$STATE_DIR/settings.info" pid="" port="" token="" adir="" url assets i
   command -v python3 > /dev/null || {
     notify "Settings needs python3" "Install Apple's command line tools: xcode-select --install"
     exit 1
   }
   ensure_config
   mkdir -p "$STATE_DIR"
-  [ -f "$info" ] && IFS=$'\t' read -r pid port token < "$info"
+  [ -f "$info" ] && IFS=$'\t' read -r pid port token adir < "$info"
   assets=$(ensure_assets)
-  if [ -n "$pid" ] && [ "$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')" != "$assets" ]; then
+  if [ -n "$pid" ] && [ "$adir" != "$assets" ]; then
     kill "$pid" 2>/dev/null
     pid=""
   fi
   if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
     rm -f "$info"
-    (cd "$assets" && nohup python3 -I server.py "$CONFIG" "$SELF" index.html "$info" > /dev/null 2>&1 < /dev/null &)
-    for ((i = 0; i < 100; i++)); do
+    (cd "$assets" && nohup python3 -I server.py "$CONFIG" "$SELF" index.html "$info" "$VERSION" > /dev/null 2>&1 < /dev/null &)
+    for ((i = 0; i < 200; i++)); do
       [ -s "$info" ] && break
-      sleep 0.1
+      sleep 0.05
     done
-    IFS=$'\t' read -r pid port token < "$info" || { notify "Settings didn't open" "The settings helper failed to start"; exit 1; }
+    IFS=$'\t' read -r pid port token adir < "$info" || { notify "Settings didn't open" "The settings helper failed to start"; exit 1; }
   fi
   for i in "$SUPPORT_DIR"/settings-*; do
     [ "$i" = "$assets" ] || rm -rf "$i"
   done
   url="http://127.0.0.1:$port/?t=$token"
-  [ -n "$1" ] && url="$url&add=$(jq -rn --arg v "$(tilde "$1")" '$v | @uri')"
-  open_app_window "$url"
+  if [ -n "$1" ]; then
+    open_app_window "$url&add=$(jq -rn --arg v "$(tilde "$1")" '$v | @uri')"
+  else
+    open_app_window "$url" "http://127.0.0.1:$port/"
+  fi
+}
+
+# Brings a window of browser $1 whose page starts with $2 to the front, and fails when there is no
+# such window or the browser won't answer. Asking an already running browser is much quicker than
+# starting another copy of it, which is what opening an app window otherwise costs.
+raise_window() {
+  local answer
+  answer=$(osascript - "$1" "$2" 2>/dev/null <<'APPLESCRIPT'
+on run argv
+  set appName to item 1 of argv
+  set target to item 2 of argv
+  if not (application appName is running) then return "no"
+  tell application appName
+    repeat with w in windows
+      repeat with t in tabs of w
+        if URL of t starts with target then
+          set index of w to 1
+          activate
+          return "yes"
+        end if
+      end repeat
+    end repeat
+  end tell
+  return "no"
+end run
+APPLESCRIPT
+  ) || return 1
+  [ "$answer" = yes ]
 }
 
 # Opens a URL as a standalone app window in a Chromium browser if one is installed, else in the
-# default browser.
+# default browser. With a page prefix in $2, a window already showing that page is raised instead.
 open_app_window() {
-  local app
+  local app match="${2:-}"
   [ -n "${DEV_SERVERS_QUIET:-}" ] && return 0
   for app in "Google Chrome" "Microsoft Edge" "Brave Browser"; do
     if [ -d "/Applications/$app.app" ] || [ -d "$HOME/Applications/$app.app" ]; then
+      if [ -n "$match" ] && raise_window "$app" "$match"; then return; fi
       open -na "$app" --args --app="$1" --window-size=820,860
       return
     fi

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Settings has a Backup section. Export downloads your settings as a JSON file, and Import reads one back, asking whether to replace everything or only add the repos from the file. An import fills in the form without saving, so you can look it over first.
+- Choosing Settings when the window is already open now brings it to the front, instead of opening a second one in a new browser instance. The first time, macOS asks whether Dev Servers may control your browser.
+- The settings window opens a little faster. It no longer runs the plugin to read the version or `lsof` to check the helper, which now records the folder it serves in `settings.info`.
+- New `make settings`, which runs the settings window against a throwaway config in any browser, so the window can be worked on without SwiftBar.
+
 ## 1.0.1 - 2026-10-31
 
 - New `enable` command. After a Homebrew install, `~/.swiftbar/dev-servers.sh enable` points SwiftBar at the plugin folder and starts it, so the icon appears without picking a folder by hand. Homebrew itself can't do this.

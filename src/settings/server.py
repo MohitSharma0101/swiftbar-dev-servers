@@ -4,8 +4,9 @@ Serves the settings page and a small JSON API on 127.0.0.1. Every request must c
 per-session token and a matching Host header, so other websites can't read or change the config.
 The process exits after 15 minutes without requests; the page pings it while it's open.
 
-Usage: server.py CONFIG_PATH PLUGIN_PATH INDEX_HTML INFO_FILE
-Writes "pid<TAB>port<TAB>token" to INFO_FILE once it's listening.
+Usage: server.py CONFIG_PATH PLUGIN_PATH INDEX_HTML INFO_FILE VERSION
+Writes "pid<TAB>port<TAB>token<TAB>folder" to INFO_FILE once it's listening, where folder is the
+one these files were served from, so the plugin can spot a helper left over from an older build.
 """
 
 import contextlib
@@ -20,7 +21,7 @@ import threading
 import time
 import urllib.parse
 
-CONFIG, PLUGIN, INDEX_HTML, INFO_FILE = sys.argv[1:5]
+CONFIG, PLUGIN, INDEX_HTML, INFO_FILE, VERSION = sys.argv[1:6]
 TOKEN = secrets.token_urlsafe(24)
 IDLE_EXIT_SECS = 900
 PORT_RE = re.compile(r"^\d{2,5}$")
@@ -87,8 +88,15 @@ def validate(cfg):
 
 
 def run_plugin(*args):
-    """Runs a plugin subcommand (folder picker, repo inspection) and returns its stdout."""
-    out = subprocess.run([PLUGIN, *args], check=False, capture_output=True, text=True, timeout=300)
+    """Runs a plugin subcommand (folder picker, repo inspection) and returns its stdout.
+
+    Returns an empty string when the plugin can't be run at all, which only happens in the
+    development harness, so the page still loads instead of failing on a request it doesn't need.
+    """
+    try:
+        out = subprocess.run([PLUGIN, *args], check=False, capture_output=True, text=True, timeout=300)
+    except OSError:
+        return ""
     return out.stdout.strip()
 
 
@@ -131,7 +139,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 {
                     "config": read_config(),
                     "path": CONFIG.replace(os.path.expanduser("~"), "~", 1),
-                    "version": run_plugin("version"),
+                    "version": VERSION,
                 },
             )
         self.send(404, {"error": "Not found"})
@@ -173,7 +181,7 @@ def exit_when_idle():
 def main():
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     with open(INFO_FILE + ".tmp", "w") as f:
-        f.write(f"{os.getpid()}\t{server.server_address[1]}\t{TOKEN}\n")
+        f.write(f"{os.getpid()}\t{server.server_address[1]}\t{TOKEN}\t{os.getcwd()}\n")
     os.replace(INFO_FILE + ".tmp", INFO_FILE)
     threading.Thread(target=exit_when_idle, daemon=True).start()
     server.serve_forever()

@@ -124,6 +124,13 @@ A repo can have as many modes as you like.
 | URL on default port | The link used when the server runs on the repo's default port. |
 | Detect by | Text in the server's command line that identifies this mode, such as `dev:staging`. Leave it empty on the mode that should be the fallback. |
 
+### Backup
+
+**Export…** downloads a copy of your settings as a JSON file. **Import…** reads one back and asks
+whether to replace everything you have or only add the repos from the file, so you can move your
+setup to another Mac or keep a copy before a big change. An import fills in the form without saving,
+so you can look it over and then press Save.
+
 Settings live in `~/.config/dev-servers/config.json`. Repos are matched by their git `origin` remote, so all worktrees of a repo share one entry.
 
 ## How it works
@@ -138,7 +145,8 @@ Stop sends SIGTERM to the server and to the `npm`, `pnpm`, `yarn`, `bun` or `nod
 
 For idle auto-stop, a server counts as in use while a browser holds a connection to it. An open tab keeps its live-reload connection, so a tab you left open counts.
 
-The settings window is a small Python server bound to `127.0.0.1` on a random port. Every request needs a token that changes each session, so other websites can't read or change your settings. It quits by itself 15 minutes after you close the window.
+The settings window is a small Python server bound to `127.0.0.1` on a random port. Every request needs a token that changes each session, so other websites can't read or change your settings. It quits by itself 15 minutes after you close the window. Choosing Settings again brings the window
+you already have to the front rather than opening a second one.
 
 Logs for servers started from the menu are in `~/Library/Logs/dev-servers/`.
 
@@ -167,10 +175,15 @@ That removes the plugin and keeps your settings. Add `--purge` to also remove se
 ## Development
 
 ```bash
-make lint    # shellcheck and ruff
-make test    # end-to-end smoke test in a throwaway folder
-make build   # builds the single-file plugin into dist/
+make lint      # shellcheck and ruff
+make test      # end-to-end smoke test in a throwaway folder
+make build     # builds the single-file plugin into dist/
+make settings  # opens the settings window against a throwaway config
 ```
+
+`make settings` starts the settings backend on its own and prints a URL you can open in any browser,
+on any machine, so you can work on the window without SwiftBar or a real config. Browse and Add repo
+need macOS and the plugin, so they do nothing there.
 
 The plugin source is `src/dev-servers.sh` and the settings window is in `src/settings/`. `make build` embeds the settings files in the plugin so it ships as a single file.
 

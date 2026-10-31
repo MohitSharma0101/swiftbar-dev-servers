@@ -24,9 +24,10 @@ lets the user start, open, restart and stop them from the menu bar. It ships as 
 | `src/settings/server.py` | Settings window backend: Python stdlib HTTP server on `127.0.0.1`, random port, per-session token. |
 | `src/settings/index.html` | Settings window UI. Always dark mode (owner's request). |
 | `scripts/build.sh` | Builds `dist/dev-servers.sh`: stamps the version and embeds the settings files as heredocs between `# >>> settings-assets` and `# <<< settings-assets`. |
+| `scripts/settings-dev.sh` | Runs the settings backend against a throwaway config and prints its URL, so the window can be opened in any browser on any machine. `make settings`. |
 | `scripts/cask.sh` | Prints the Homebrew cask for a version and SHA-256. Used by the release workflow. |
 | `install.sh` | Installer. Works from a checkout (builds from source) or piped from the release (`curl ... | bash`, downloads the plugin). Installs SwiftBar if missing. |
-| `tests/smoke.sh` | End-to-end smoke test, 42 checks, in a throwaway config/cache/project. Ports 48201 to 48290. |
+| `tests/smoke.sh` | End-to-end smoke test, 46 checks, in a throwaway config/cache/project. Ports 48201 to 48290. |
 | `.github/workflows/release.yml` | On a `v*` tag: lint, test, build, SHA256SUMS, build provenance attestation, GitHub release, then update the Homebrew tap. |
 | `docs/settings.png` | Screenshot used in the README (sample `acme/storefront` data). |
 | `dist/` | Build output, git-ignored. |
@@ -38,6 +39,7 @@ make lint      # shellcheck --severity=warning on all shell files, ruff check + 
 make test      # tests/smoke.sh
 make check     # both
 make build     # dist/dev-servers.sh
+make settings  # settings window against a throwaway config, no SwiftBar needed
 ./install.sh --no-launch          # build and install into SwiftBar's plugin folder without refreshing
 ./install.sh --plugin-dir DIR     # install somewhere else (use a temp dir for tests)
 ./install.sh --uninstall [--purge]
@@ -74,7 +76,7 @@ not tabs: bash `read` merges empty tab-separated fields, which once made pending
 | `off` | Exists while the user has chosen Turn off. |
 | `stream.pid` | PID of the streaming process. |
 | `rendered` | Last full menu output, used by `splice_pending`. |
-| `settings.info` | PID and URL of the running settings helper. |
+| `settings.info` | PID, port, token and the folder the helper serves, separated by tabs. |
 
 ## How the plugin works
 
@@ -101,6 +103,14 @@ not tabs: bash `read` merges empty tab-separated fields, which once made pending
   else Retry, and Dismiss.
 - Stop (`kill_tree`/`stop_root`): SIGTERM to the server and its launcher processes inside that
   worktree, 5 s wait, then SIGKILL. Never touches shells or terminals.
+- Settings… raises the browser window already showing the settings page (`raise_window`, AppleScript
+   to Chrome, Edge or Brave) instead of starting another browser instance. Any failure, including a
+   denied automation prompt, falls back to the old `open -na` launch. "Set up this repo…" always
+   opens a fresh window, because it carries an `add` parameter the open window wouldn't act on.
+- The settings window gets the plugin version as a command line argument, so loading the page costs
+   no subprocess. Export and import live in the page: export downloads the config as JSON, import
+   reads a file back, asks whether to replace everything or only merge the repos, and fills in the
+   form without saving.
 - Health check: request to a static asset path, 2 s timeout. Green = answers, orange = slow/busy,
   red = 5xx.
 - Turn off writes `state/off`; the stream then renders a greyed icon with Turn on and sleeps.
@@ -127,7 +137,8 @@ not tabs: bash `read` merges empty tab-separated fields, which once made pending
 7. **BSD `pkill`/`pgrep` differ from GNU.** `pkill -f pattern -n` treats `-n` as a pattern. Never use
    broad `pkill -f` patterns; one once killed the user's live stream.
 8. **Settings asset cache is keyed by the plugin's md5,** not the version. Keying by version served a
-   stale (light mode) window after a rebuild. A stale helper is detected by comparing its cwd.
+   stale (light mode) window after a rebuild. A helper left over from an older build is spotted by
+   comparing the folder it recorded in `settings.info`.
 9. Splicing pending rows must not call `editor_cmd`: it needs `$TMP/cfg`, which doesn't exist there.
 
 ## Distribution design

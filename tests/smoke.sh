@@ -212,18 +212,26 @@ for ((i = 0; i < WAIT_TICKS; i++)); do
   sleep 0.2
 done
 if [ -s "$WORK/cache/state/settings.info" ]; then
-  IFS=$'\t' read -r _ port token < "$WORK/cache/state/settings.info"
+  IFS=$'\t' read -r _ port token adir < "$WORK/cache/state/settings.info"
   base="http://127.0.0.1:$port"
+  check "settings.info records the folder the helper serves" test -f "$adir/index.html"
   check "settings API rejects requests without the token" \
     test "$(curl -s -o /dev/null -w '%{http_code}' "$base/api/config")" = 403
   check "settings API returns the config with the token" \
     grep -q '"demo"' <<< "$(curl -s -H "X-Token: $token" "$base/api/config")"
+  check "settings API reports the plugin version" \
+    grep -q '"version": "dev"' <<< "$(curl -s -H "X-Token: $token" "$base/api/config")"
+  check "settings page offers export and import" \
+    grep -q 'id="import-dialog"' <<< "$(curl -s "$base/?t=$token")"
   check "settings API rejects an invalid config" grep -q '"errors"' <<< "$(curl -s -H "X-Token: $token" \
     -X POST -d '{"roots":[],"repos":{"x/y":{"name":"","ports":"9-1","modes":[]}}}' "$base/api/config")"
 else
   fail "settings helper writes settings.info"
+  fail "settings.info records the folder the helper serves"
   fail "settings API rejects requests without the token"
   fail "settings API returns the config with the token"
+  fail "settings API reports the plugin version"
+  fail "settings page offers export and import"
   fail "settings API rejects an invalid config"
   debug_state "settings helper never started" "$(cat "$WORK/settings.out" 2>&1)"
 fi
