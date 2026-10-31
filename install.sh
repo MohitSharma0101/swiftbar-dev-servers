@@ -191,8 +191,34 @@ refresh_swiftbar() {
   fi
 }
 
+# Prints a folder already on the PATH where the dev-servers command can be linked, if there is one
+# we can write to without asking for a password.
+command_dir() {
+  local candidates=() dir
+  command -v brew > /dev/null && candidates+=("$(brew --prefix)/bin")
+  candidates+=(/usr/local/bin)
+  for dir in "${candidates[@]}"; do
+    if [ -d "$dir" ] && [ -w "$dir" ]; then
+      printf '%s
+' "$dir"
+      return 0
+    fi
+  done
+  return 0
+}
+
+# Links the plugin as a plain dev-servers command, so it can be run without typing its full path.
+link_command() {
+  local bin
+  bin=$(command_dir)
+  [ -n "$bin" ] || return 0
+  ln -sf "$1" "$bin/$APP_ID" 2> /dev/null || return 0
+  printf '%s
+' "$bin/$APP_ID"
+}
+
 do_install() {
-  local app dir src
+  local app dir src link
   check_requirements
   app=$(find_swiftbar)
   if [ -z "$app" ]; then
@@ -204,15 +230,17 @@ do_install() {
   src=$(plugin_source)
   mkdir -p "$dir"
   install -m 0755 "$src" "$dir/$PLUGIN_NAME"
+  link=$(link_command "$dir/$PLUGIN_NAME")
   refresh_swiftbar "$app"
   say ""
   say "Installed Dev Servers $("$dir/$PLUGIN_NAME" version) into $dir"
+  [ -n "$link" ] && say "You can run it as: $APP_ID" || true
   say "Look for the server icon in your menu bar, and open Settings… from its menu to add your repos."
   say "If the icon doesn't appear, your menu bar may be full: hide a few icons or hold ⌘ and drag it into view."
 }
 
 do_uninstall() {
-  local dir info pid
+  local dir info pid bin
   dir=${plugin_dir:-$(defaults read "$SWIFTBAR_BUNDLE_ID" PluginDirectory 2>/dev/null || echo "$DEFAULT_PLUGIN_DIR")}
   dir=${dir/#\~/$HOME}
   info="$HOME/Library/Caches/$APP_ID/state/settings.info"
@@ -221,6 +249,10 @@ do_uninstall() {
     kill "$pid" 2>/dev/null || true
   fi
   rm -f "$dir/$PLUGIN_NAME"
+  bin=$(command_dir)
+  if [ -n "$bin" ] && [ "$(readlink "$bin/$APP_ID" 2> /dev/null)" = "$dir/$PLUGIN_NAME" ]; then
+    rm -f "$bin/$APP_ID"
+  fi
   say "Removed the plugin from $dir"
   if [ "$purge" = 1 ]; then
     rm -rf "$HOME/.config/$APP_ID" "$HOME/Library/Caches/$APP_ID" "$HOME/Library/Logs/$APP_ID" \

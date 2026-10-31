@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0 - 2026-10-31
+
+- The plugin is now also a `dev-servers` command, so the one step after a Homebrew install is `dev-servers enable` instead of the full path. The installer links the command too, when it finds a folder on your PATH it can write to.
+- The plugin follows symlinks to itself, so running it through that command still points SwiftBar and the menu at the plugin file.
+- The Homebrew install command in the README dropped `--cask`, which Homebrew works out by itself. The longer spelling is still there further down for older Homebrew versions.
+
 ## 1.1.1 - 2026-10-31
 
 - Choosing Settings when the window is already open goes back to opening a new window. Bringing the open one to the front needed permission to control your browser, and macOS asked for it with a pop-up. Not worth it.

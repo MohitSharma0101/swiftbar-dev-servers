@@ -24,13 +24,13 @@ URL, so you stop juggling ports by hand.
 ## Install
 
 ```bash
-brew install --cask mohitsharma0101/tap/dev-servers
+brew install mohitsharma0101/tap/dev-servers
 ```
 
 Homebrew cannot start SwiftBar for you, so finish with:
 
 ```bash
-~/.swiftbar/dev-servers.sh enable
+dev-servers enable
 ```
 
 The icon appears in your menu bar. Update with `brew upgrade`, remove with
@@ -49,7 +49,8 @@ curl -fsSL https://github.com/MohitSharma0101/swiftbar-dev-servers/releases/late
 It installs SwiftBar if it is missing, with Homebrew when you have it, otherwise from SwiftBar's own
 GitHub release, which it only installs if the app is signed by SwiftBar's developer. It never asks
 for an admin password. Then it downloads the plugin, checks it against the release's `SHA256SUMS`,
-copies it into your plugin folder and refreshes SwiftBar. Run the same command again to update, or
+copies it into your plugin folder and refreshes SwiftBar. It also links a `dev-servers` command
+when it finds a folder on your PATH it can write to. Run the same command again to update, or
 add `bash -s -- --version 1.0.0` for a specific release. To remove it, add `bash -s -- --uninstall`,
 plus `--purge` to take settings, cache and logs with it.
 
@@ -59,6 +60,12 @@ checkout.
 **By hand.** Download `dev-servers.sh` from the
 [latest release](https://github.com/MohitSharma0101/swiftbar-dev-servers/releases/latest), drop it
 into your SwiftBar plugin folder and run `chmod +x` on it. It is one file with everything inside.
+
+**If Homebrew cannot find it.** Older Homebrew versions need to be told this is a cask:
+
+```bash
+brew install --cask mohitsharma0101/tap/dev-servers
+```
 
 **Read it before you run it.** Every release is built by GitHub Actions from a tagged commit here,
 with a signed build provenance record. To confirm a file came from that build, use the

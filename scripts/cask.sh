@@ -29,6 +29,7 @@ cask "dev-servers" do
   depends_on macos: :ventura
 
   artifact "dev-servers.sh", target: "~/.swiftbar/dev-servers.sh"
+  binary "#{Dir.home}/.swiftbar/dev-servers.sh", target: "dev-servers"
 
   preflight_steps do
     set_permissions "dev-servers.sh", "0755", base: :staged_path
@@ -44,7 +45,7 @@ cask "dev-servers" do
   caveats <<~EOS
     One more step, to point SwiftBar at Dev Servers and start it:
 
-      ~/.swiftbar/dev-servers.sh enable
+      dev-servers enable
 
     If you already use another plugin folder, run the installer from the README instead.
   EOS

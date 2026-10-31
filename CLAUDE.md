@@ -27,7 +27,7 @@ lets the user start, open, restart and stop them from the menu bar. It ships as 
 | `scripts/settings-dev.sh` | Runs the settings backend against a throwaway config and prints its URL, so the window can be opened in any browser on any machine. `make settings`. |
 | `scripts/cask.sh` | Prints the Homebrew cask for a version and SHA-256. Used by the release workflow. |
 | `install.sh` | Installer. Works from a checkout (builds from source) or piped from the release (`curl ... | bash`, downloads the plugin). Installs SwiftBar if missing. |
-| `tests/smoke.sh` | End-to-end smoke test, 45 checks, in a throwaway config/cache/project. Ports 48201 to 48290. |
+| `tests/smoke.sh` | End-to-end smoke test, 46 checks, in a throwaway config/cache/project. Ports 48201 to 48290. |
 | `.github/workflows/release.yml` | On a `v*` tag: lint, test, build, SHA256SUMS, build provenance attestation, GitHub release, then update the Homebrew tap. |
 | `docs/settings.png` | Screenshot used in the README (sample `acme/storefront` data). |
 | `dist/` | Build output, git-ignored. |
@@ -85,7 +85,10 @@ not tabs: bash `read` merges empty tab-separated fields, which once made pending
 - With an argument, `main` dispatches a menu action: `start`, `start-other`, `stop`, `stop-idle`,
   `restart`, `stop-all`, `off`/`on`, `dismiss`, `quit`, `copy`, `settings`, `pick-folder`,
   `inspect`, `render` (one render to stdout, useful for debugging), `version`, `enable`.
-- `enable` is the only one meant to be typed by a person. Homebrew cannot start SwiftBar or set its
+- `enable` is the only one meant to be typed by a person. The cask links the plugin into Homebrew's
+  `bin` as `dev-servers`, and the installer does the same when it finds a writable folder on the
+  PATH, so the command is `dev-servers enable`. `SELF` resolves symlinks for that reason: without it
+  `cmd_enable` would point SwiftBar's plugin folder at the folder holding the link. Homebrew cannot start SwiftBar or set its
   plugin folder, because Homebrew 7 runs install steps in a sandbox with a fake HOME, so the cask's
   caveats ask the user to run it. It points SwiftBar at the folder the plugin sits in, then starts
   or refreshes SwiftBar. It refuses when SwiftBar already uses a different plugin folder. There is
@@ -148,13 +151,19 @@ not tabs: bash `read` merges empty tab-separated fields, which once made pending
     `TeamIdentifier` is `X93LWC49WV` (SwiftBar's team, read from the official v2.1.1 release).
   - Plugin folder: SwiftBar's `PluginDirectory` default, or `~/.swiftbar` set before first launch.
   - `--version X.Y.Z`, `--plugin-dir`, `--no-launch`, `--uninstall [--purge]`.
-- **Homebrew:** `brew install --cask mohitsharma0101/tap/dev-servers`.
+- **Homebrew:** `brew install mohitsharma0101/tap/dev-servers`. The README leads with that form,
+  since Homebrew resolves a token with no matching formula as a cask, and keeps the explicit
+  `--cask` spelling further down as a fallback.
   - Cask depends on the `swiftbar` cask and the `jq` formula, macOS Ventura or later.
   - Homebrew 7 replaced `postflight` with declarative `*_steps` blocks that run in a sandbox with a fake
     HOME, so the cask cannot read SwiftBar's plugin folder setting. It uses
     `artifact "dev-servers.sh", target: "~/.swiftbar/dev-servers.sh"` plus
     `preflight_steps { set_permissions "dev-servers.sh", "0755", base: :staged_path }`
     (without it the plugin lands as 0644 and SwiftBar can't run it).
+  - `binary "#{Dir.home}/.swiftbar/dev-servers.sh", target: "dev-servers"` links the command. The
+    source has to be a real absolute path: Homebrew resolves a `binary` source as
+    `staged_path.join(source)`, and only the target gets `~` expanded. Generic `artifact` sorts
+    before `binary`, so the file is already at the target when the link is made.
   - Users with a SwiftBar installed outside Homebrew need `brew install --cask --adopt swiftbar` first.
     Users with an existing plugin file need `--adopt`.
   - Tested on Homebrew 7.0.11 with a throwaway local tap: install, adopt, uninstall and reinstall all

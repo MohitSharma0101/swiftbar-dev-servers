@@ -14,7 +14,21 @@ export PATH="$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/
 
 readonly VERSION="dev"
 readonly APP_ID="dev-servers"
-SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+# Follows $0 through any symlinks, so the command Homebrew links onto the PATH still finds the
+# plugin file itself. BSD readlink has no -f on older macOS, so this walks the links by hand.
+resolve_self() {
+  local path=$1 dir
+  while [ -L "$path" ]; do
+    dir=$(cd "$(dirname "$path")" && pwd)
+    path=$(readlink "$path")
+    case "$path" in
+      /*) ;;
+      *) path="$dir/$path" ;;
+    esac
+  done
+  echo "$(cd "$(dirname "$path")" && pwd)/$(basename "$path")"
+}
+SELF="$(resolve_self "$0")"
 readonly SELF
 readonly CONFIG="${DEV_SERVERS_CONFIG:-$HOME/.config/$APP_ID/config.json}"
 readonly CACHE_DIR="${DEV_SERVERS_CACHE:-$HOME/Library/Caches/$APP_ID}"

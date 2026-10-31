@@ -93,6 +93,8 @@ check "offers to start the configured repo" grep -q "^Start demo" <<< "$out"
 check "has a Settings item" grep -q "^Settings…" <<< "$out"
 check "has a Turn off item" grep -q "^Turn off | .*param1=off" <<< "$out"
 check "has a Quit SwiftBar item" bash -c 'grep "^Quit SwiftBar |" <<< "$1" | grep -q "param1=quit" && ! grep "^Quit SwiftBar |" <<< "$1" | grep -q alternate' _ "$out"
+ln -s "$PLUGIN" "$WORK/dev-servers"
+check "running through a symlink points its actions at the plugin itself"   bash -c 'grep -qF "bash=$1" <<< "$3" && ! grep -qF "bash=$2" <<< "$3"' _ "$PLUGIN" "$WORK/dev-servers" "$("$WORK/dev-servers" render)"
 
 echo "Start, detect, stop"
 "$PLUGIN" start local/demo-app "$PROJECT" 0
